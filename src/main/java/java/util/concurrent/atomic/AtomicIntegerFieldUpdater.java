@@ -385,15 +385,19 @@ public abstract class AtomicIntegerFieldUpdater<T> {
             final Field field;
             final int modifiers;
             try {
+                // 获取field对象
                 field = AccessController.doPrivileged(
                     new PrivilegedExceptionAction<Field>() {
                         public Field run() throws NoSuchFieldException {
                             return tclass.getDeclaredField(fieldName);
                         }
                     });
+                // 获取field的修饰符
                 modifiers = field.getModifiers();
+                // 保证对字段的访问权限
                 sun.reflect.misc.ReflectUtil.ensureMemberAccess(
                     caller, tclass, null, modifiers);
+
                 ClassLoader cl = tclass.getClassLoader();
                 ClassLoader ccl = caller.getClassLoader();
                 if ((ccl != null) && (ccl != cl) &&
@@ -406,24 +410,20 @@ public abstract class AtomicIntegerFieldUpdater<T> {
                 throw new RuntimeException(ex);
             }
 
+            // 保证字段是int类型
             if (field.getType() != int.class)
                 throw new IllegalArgumentException("Must be integer type");
 
+            // 保证字段是volatile修饰
             if (!Modifier.isVolatile(modifiers))
                 throw new IllegalArgumentException("Must be volatile type");
 
-            // Access to protected field members is restricted to receivers only
-            // of the accessing class, or one of its subclasses, and the
-            // accessing class must in turn be a subclass (or package sibling)
-            // of the protected member's defining class.
-            // If the updater refers to a protected field of a declaring class
-            // outside the current package, the receiver argument will be
-            // narrowed to the type of the accessing class.
             this.cclass = (Modifier.isProtected(modifiers) &&
                            tclass.isAssignableFrom(caller) &&
                            !isSamePackage(tclass, caller))
                           ? caller : tclass;
             this.tclass = tclass;
+            // 获取字段偏移量
             this.offset = U.objectFieldOffset(field);
         }
 

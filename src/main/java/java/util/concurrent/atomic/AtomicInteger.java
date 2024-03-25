@@ -56,17 +56,27 @@ import java.util.function.IntUnaryOperator;
 public class AtomicInteger extends Number implements java.io.Serializable {
     private static final long serialVersionUID = 6214790243416807050L;
 
-    // setup to use Unsafe.compareAndSwapInt for updates
+    /**
+     * unsafe实例, Java提供的可直接操作内存地址的类
+     */
     private static final Unsafe unsafe = Unsafe.getUnsafe();
+
+    /**
+     * value变量在内存中的相对偏移量, 通过unsafe可以直接操作内存地址中的内容(C语言指针操作)
+     */
     private static final long valueOffset;
 
     static {
         try {
+            // 通过unsafe拿到value变量相对于AtomicInteger类的内存偏移量
             valueOffset = unsafe.objectFieldOffset
                 (AtomicInteger.class.getDeclaredField("value"));
         } catch (Exception ex) { throw new Error(ex); }
     }
 
+    /**
+     * value变量
+     */
     private volatile int value;
 
     /**
@@ -151,72 +161,30 @@ public class AtomicInteger extends Number implements java.io.Serializable {
         return unsafe.compareAndSwapInt(this, valueOffset, expect, update);
     }
 
-    /**
-     * Atomically increments by one the current value.
-     *
-     * @return the previous value
-     */
     public final int getAndIncrement() {
         return unsafe.getAndAddInt(this, valueOffset, 1);
     }
 
-    /**
-     * Atomically decrements by one the current value.
-     *
-     * @return the previous value
-     */
     public final int getAndDecrement() {
         return unsafe.getAndAddInt(this, valueOffset, -1);
     }
 
-    /**
-     * Atomically adds the given value to the current value.
-     *
-     * @param delta the value to add
-     * @return the previous value
-     */
     public final int getAndAdd(int delta) {
         return unsafe.getAndAddInt(this, valueOffset, delta);
     }
 
-    /**
-     * Atomically increments by one the current value.
-     *
-     * @return the updated value
-     */
     public final int incrementAndGet() {
         return unsafe.getAndAddInt(this, valueOffset, 1) + 1;
     }
 
-    /**
-     * Atomically decrements by one the current value.
-     *
-     * @return the updated value
-     */
     public final int decrementAndGet() {
         return unsafe.getAndAddInt(this, valueOffset, -1) - 1;
     }
 
-    /**
-     * Atomically adds the given value to the current value.
-     *
-     * @param delta the value to add
-     * @return the updated value
-     */
     public final int addAndGet(int delta) {
         return unsafe.getAndAddInt(this, valueOffset, delta) + delta;
     }
 
-    /**
-     * Atomically updates the current value with the results of
-     * applying the given function, returning the previous value. The
-     * function should be side-effect-free, since it may be re-applied
-     * when attempted updates fail due to contention among threads.
-     *
-     * @param updateFunction a side-effect-free function
-     * @return the previous value
-     * @since 1.8
-     */
     public final int getAndUpdate(IntUnaryOperator updateFunction) {
         int prev, next;
         do {
@@ -226,16 +194,6 @@ public class AtomicInteger extends Number implements java.io.Serializable {
         return prev;
     }
 
-    /**
-     * Atomically updates the current value with the results of
-     * applying the given function, returning the updated value. The
-     * function should be side-effect-free, since it may be re-applied
-     * when attempted updates fail due to contention among threads.
-     *
-     * @param updateFunction a side-effect-free function
-     * @return the updated value
-     * @since 1.8
-     */
     public final int updateAndGet(IntUnaryOperator updateFunction) {
         int prev, next;
         do {
@@ -245,20 +203,6 @@ public class AtomicInteger extends Number implements java.io.Serializable {
         return next;
     }
 
-    /**
-     * Atomically updates the current value with the results of
-     * applying the given function to the current and given values,
-     * returning the previous value. The function should be
-     * side-effect-free, since it may be re-applied when attempted
-     * updates fail due to contention among threads.  The function
-     * is applied with the current value as its first argument,
-     * and the given update as the second argument.
-     *
-     * @param x the update value
-     * @param accumulatorFunction a side-effect-free function of two arguments
-     * @return the previous value
-     * @since 1.8
-     */
     public final int getAndAccumulate(int x,
                                       IntBinaryOperator accumulatorFunction) {
         int prev, next;
@@ -269,20 +213,6 @@ public class AtomicInteger extends Number implements java.io.Serializable {
         return prev;
     }
 
-    /**
-     * Atomically updates the current value with the results of
-     * applying the given function to the current and given values,
-     * returning the updated value. The function should be
-     * side-effect-free, since it may be re-applied when attempted
-     * updates fail due to contention among threads.  The function
-     * is applied with the current value as its first argument,
-     * and the given update as the second argument.
-     *
-     * @param x the update value
-     * @param accumulatorFunction a side-effect-free function of two arguments
-     * @return the updated value
-     * @since 1.8
-     */
     public final int accumulateAndGet(int x,
                                       IntBinaryOperator accumulatorFunction) {
         int prev, next;

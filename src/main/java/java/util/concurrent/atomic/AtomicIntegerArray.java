@@ -48,18 +48,35 @@ import java.util.function.IntUnaryOperator;
  * @since 1.5
  * @author Doug Lea
  */
+
+/**
+ * 通过数组初始地址base和元素偏移量shift来计算元素的内存地址
+ * 然后通过Unsafe直接操作内存
+ */
 public class AtomicIntegerArray implements java.io.Serializable {
     private static final long serialVersionUID = 2862133569453604235L;
 
     private static final Unsafe unsafe = Unsafe.getUnsafe();
+    /**
+     * 数组的初始内存地址
+     */
     private static final int base = unsafe.arrayBaseOffset(int[].class);
+
+    /**
+     * i<<shift可得到偏移量, 通过base + 偏移量即可得到元素的内存地址
+     */
     private static final int shift;
     private final int[] array;
 
     static {
+        // scale表示数组元素的字节大小, 此处为4
         int scale = unsafe.arrayIndexScale(int[].class);
+        // 4 & 3 = 0, 为了校验scale必须只有最高位为1的值, 即
         if ((scale & (scale - 1)) != 0)
             throw new Error("data type scale not a power of two");
+        // numberOfLeadingZeros计算出scale的二进制表示中从最高位开始连续的0的个数
+        // scale为4(二进制100) numberOfLeadingZeros(4) = 29
+        // 最后shift = 31 - 29 = 2, 之后就可以通过索引i << 2 (等同于i * 4) + base来计算元素的内存地址
         shift = 31 - Integer.numberOfLeadingZeros(scale);
     }
 
@@ -140,28 +157,11 @@ public class AtomicIntegerArray implements java.io.Serializable {
         unsafe.putOrderedInt(array, checkedByteOffset(i), newValue);
     }
 
-    /**
-     * Atomically sets the element at position {@code i} to the given
-     * value and returns the old value.
-     *
-     * @param i the index
-     * @param newValue the new value
-     * @return the previous value
-     */
+
     public final int getAndSet(int i, int newValue) {
         return unsafe.getAndSetInt(array, checkedByteOffset(i), newValue);
     }
 
-    /**
-     * Atomically sets the element at position {@code i} to the given
-     * updated value if the current value {@code ==} the expected value.
-     *
-     * @param i the index
-     * @param expect the expected value
-     * @param update the new value
-     * @return {@code true} if successful. False return indicates that
-     * the actual value was not equal to the expected value.
-     */
     public final boolean compareAndSet(int i, int expect, int update) {
         return compareAndSetRaw(checkedByteOffset(i), expect, update);
     }

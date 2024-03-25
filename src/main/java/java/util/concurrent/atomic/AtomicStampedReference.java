@@ -49,6 +49,11 @@ package java.util.concurrent.atomic;
  */
 public class AtomicStampedReference<V> {
 
+    /**
+     * 共享变量
+     */
+    private volatile Pair<V> pair;
+
     private static class Pair<T> {
         final T reference;
         final int stamp;
@@ -60,8 +65,6 @@ public class AtomicStampedReference<V> {
             return new Pair<T>(reference, stamp);
         }
     }
-
-    private volatile Pair<V> pair;
 
     /**
      * Creates a new {@code AtomicStampedReference} with the given
