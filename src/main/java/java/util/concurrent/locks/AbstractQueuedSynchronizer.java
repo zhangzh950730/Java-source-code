@@ -1276,6 +1276,7 @@ public abstract class AbstractQueuedSynchronizer
      *            and can represent anything you like.
      */
     public final void acquireShared(int arg) {
+        // 先尝试获取共享锁
         if (tryAcquireShared(arg) < 0)
             doAcquireShared(arg);
     }
