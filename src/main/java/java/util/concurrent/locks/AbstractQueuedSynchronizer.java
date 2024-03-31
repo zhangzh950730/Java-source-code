@@ -1633,16 +1633,9 @@ public abstract class AbstractQueuedSynchronizer
     final boolean isOnSyncQueue(Node node) {
         if (node.waitStatus == Node.CONDITION || node.prev == null)
             return false;
-        if (node.next != null) // 存在后继节点, 那当前节点也一定在同步队列中
+        if (node.next != null)
+            // 存在后继节点, 那当前节点也一定在同步队列中
             return true;
-        /*
-         * node.prev can be non-null, but not yet on queue because
-         * the CAS to place it on queue can fail. So we have to
-         * traverse from tail to make sure it actually made it.  It
-         * will always be near the tail in calls to this method, and
-         * unless the CAS failed (which is unlikely), it will be
-         * there, so we hardly ever traverse much.
-         */
         // 从同步队列中查找node
         return findNodeFromTail(node);
     }
@@ -1679,19 +1672,12 @@ public abstract class AbstractQueuedSynchronizer
         if (!compareAndSetWaitStatus(node, Node.CONDITION, 0))
             return false;
 
-        /*
-         * Splice onto queue and try to set waitStatus of predecessor to
-         * indicate that thread is (probably) waiting. If cancelled or
-         * attempt to set waitStatus fails, wake up to resync (in which
-         * case the waitStatus can be transiently and harmlessly wrong).
-         */
-
         // 将node加入到同步队列中, 返回值为node的前驱节点
         Node p = enq(node);
         int ws = p.waitStatus;
         // 如果前驱节点的状态是取消状态 或者 尝试设置前驱节点的状态为SIGNAL失败
         if (ws > 0 || !compareAndSetWaitStatus(p, ws, Node.SIGNAL))
-            // 唤醒node的后继节点
+            // 唤醒node节点的线程
             LockSupport.unpark(node.thread);
         return true;
     }
@@ -1904,10 +1890,10 @@ public abstract class AbstractQueuedSynchronizer
         private void doSignalAll(Node first) {
             lastWaiter = firstWaiter = null; // 设置为null,别的线程就无法通过共享拿到等待队列了
             do { // 当前线程通过局部变量, 从头节点开始遍历, 依次唤醒
-                Node next = first.nextWaiter;
-                first.nextWaiter = null;
-                transferForSignal(first);
-                first = next;
+                Node next = first.nextWaiter; // 备份下一个节点
+                first.nextWaiter = null; // 相当于删除first节点
+                transferForSignal(first); // 将节点加入到同步队列中，并唤醒节点中的线程
+                first = next; // first转到下一个节点
             } while (first != null);
         }
 
@@ -2067,25 +2053,30 @@ public abstract class AbstractQueuedSynchronizer
                 throw new InterruptedException();
             // 将当前线程包装为Node,并添加到条件队列中
             Node node = addConditionWaiter();
-            // 释放所有锁, 不管重入了几次, 返回值为重入次数
+            // 释放所有锁，不管重入了几次，返回值为重入次数，这里也意味着，调用await方法的线程，必须持有锁
             int savedState = fullyRelease(node);
             int interruptMode = 0;
 
-            // 判断节点是否在同步队列中, 初次肯定能进入循环, 因为节点刚被加入条件队列
+            /*
+            判断节点是否在同步队列中
+            第一次循环, 肯定是false, 因为节点刚被加入条件队列
+            之后的循环，表示节点被signal唤醒了，但是否在同步队列中，不一定
+             */
             while (!isOnSyncQueue(node)) {
                 // 阻塞当前线程
                 LockSupport.park(this);
-                // 检查等待期间变化的断状态
+                // 检查等待期间变化的中断状态
                 if ((interruptMode = checkInterruptWhileWaiting(node)) != 0)
                     break;
             }
-            // 获取锁
+            // 此时表示线程的等待条件已经满足，可以抢占锁了
             if (acquireQueued(node, savedState) && interruptMode != THROW_IE)
                 interruptMode = REINTERRUPT;
             if (node.nextWaiter != null)
-                // 清除掉状态不是CONDITION的节点
+                // 清理条件队列中状态不是CONDITION的节点
                 unlinkCancelledWaiters();
-            if (interruptMode != 0) // 报告中断
+            if (interruptMode != 0)
+                // 中断处理
                 reportInterruptAfterWait(interruptMode);
         }
 
